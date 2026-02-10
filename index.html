@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>ระบบเช็คคะแนนนักเรียน</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f2f5; padding: 20px; font-family: 'Sarabun', sans-serif; }
+        .subject-card { border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .score-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; }
+        .score-value { font-weight: bold; color: #0d6efd; }
+        .card-header { border-top-left-radius: 15px !important; border-top-right-radius: 15px !important; }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width: 600px;">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold">ตรวจสอบคะแนน</h2>
+            <p class="text-muted">กรอกรหัสนักเรียนเพื่อค้นหาคะแนนทุกรายวิชา</p>
+        </div>
+
+        <div class="input-group mb-4 shadow-sm">
+            <input type="text" id="studentId" class="form-control form-control-lg" placeholder="กรอกรหัสนักเรียน">
+            <button class="btn btn-primary px-4" onclick="search()">ค้นหา</button>
+        </div>
+
+        <div id="loading" class="text-center d-none">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">กำลังดึงข้อมูลจากระบบ...</p>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // *** สำคัญ: ก๊อปปี้ URL ที่ได้จากตอน Deploy Apps Script มาวางที่นี่ ***
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwt9QI2ffatED3FnGxjn6X_oFhR8U286a0CXrPiOWogZewy7y-COyXCd7Gd9ItNtAGWhg/exec";
+
+        async function search() {
+            const id = document.getElementById('studentId').value;
+            const resDiv = document.getElementById('results');
+            const loader = document.getElementById('loading');
+            
+            if(!id) return alert("กรุณากรอกรหัสนักเรียน");
+
+            resDiv.innerHTML = "";
+            loader.classList.remove('d-none');
+
+            try {
+                // ดึงข้อมูลจาก Google Sheets API
+                const response = await fetch(`${WEB_APP_URL}?id=${id}`);
+                const data = await response.json();
+                
+                loader.classList.add('d-none');
+
+                if (data.length === 0) {
+                    resDiv.innerHTML = '<div class="alert alert-danger text-center">ไม่พบข้อมูลรหัสนักเรียนนี้</div>';
+                    return;
+                }
+
+                data.forEach(item => {
+                    let scoreHtml = item.scores.map(s => `
+                        <div class="score-item">
+                            <span>${s.workName}</span>
+                            <span class="score-value">${s.score}</span>
+                        </div>
+                    `).join('');
+
+                    resDiv.innerHTML += `
+                        <div class="card subject-card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">${item.subject}</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-3 text-muted"><strong>ชื่อ-นามสกุล:</strong> ${item.studentName}</p>
+                                ${scoreHtml}
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                loader.classList.add('d-none');
+                resDiv.innerHTML = '<div class="alert alert-danger text-center">เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล</div>';
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
